@@ -447,7 +447,7 @@ class Luces:
         if msg.topic in self.topics:
             t = self.topics[msg.topic]
             client.publish("acho/tts", t["text"])
-            print t
+            print (t)
             t["command"]()
 
 
