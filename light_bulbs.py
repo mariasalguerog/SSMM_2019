@@ -1,186 +1,218 @@
 from lifxlan import Light, LifxLAN
-
-import ConfigParser
-import paho.mqtt.client as mqtt
 import time
 # import os
 # from subprocess import call
 
-config = ConfigParser.RawConfigParser()
 lifx = LifxLAN()
 
-#Detect devices available and store them on a list (devices)
-devices = lifx.get_devices()
-num_lights = len(devices)
-
-print (" ======================== LIGHTS =========================")
-print
-print
-print ("Number of lights found: " + num_lights.__str__())
-print
-print
 
 #Conocemos la MAC, asignamos segun la MAC
                     ####### LIGHT DATA ######
-# bulbTV ---> 'd0:73:d5:10:7f:33', '192.168.0.102' #FUNCIONA
-# bulbWin ---> 'D0:73:D5:2D:52:AF', '192.168.0.116' #FUNCIONA
-# bulbWinVieja ---> 'd0:73:d5:10:7b:0e'
-index = 0
-bulbWin = None
-bulbTV = None
-stateBulbWin = False
-stateBulbTV = False
+# bulbTV ---> 'd0:73:d5:10:7f:33'  #FUNCIONA
+# bulbWin ---> 'D0:73:D5:2D:52:AF' #FUNCIONA
+# OLDbulbWin ---> 'd0:73:d5:10:7b:0e' #NOFUNCIONA
 
-while index < num_lights:
-    bulbAux = devices[index]
-    nameSplit = bulbAux.mac_addr.split(":")
-    if nameSplit[5] == "33":
-        print ("MAC termina en 33. Bombilla TV")
-        bulbTV = bulbAux
 
-        print ("                    TIPO DE BULBTV: ")
-        print ("                    " + str(type.__str__(bulbTV)))
+class Luces:
+
+    ###############################
+    ###        VARIABLE         ###
+    ###############################
+
+    def __init__(self, _client):
+
+        self.client = _client
+        self.index = 0
+        self.bulbWin = None
+        self.bulbTV = None
+        self.stateBulbWin = False
+        self.stateBulbTV = False
+
+    # Detect devices available and store them on a list
+        self.devices = lifx.get_devices()
+    # Obtain the number of devices store
+        self.num_lights = len(self.devices)
+
+        print (" ======================== LIGHTS =========================")
+        print
+        print
+        print ("Number of lights found: " + self.num_lights.__str__())
         print
         print
 
-    elif nameSplit[5] == "af":
-        print ("MAC temina en AF. Bombilla WIN")
-        bulbWin = bulbAux
+    #Asignacion de dispositivos
 
-        print ("                    TIPO DE BULBWIN: ")
-        print ("                    " + str(type.__str__(bulbWin)))
-        print
-        print
+        while self.index < self.num_lights:
+            bulbAux = self.devices[self.index]
+            nameSplit = bulbAux.mac_addr.split(":")
+            if nameSplit[5] == "33":
+                print ("MAC termina en 33. Bombilla TV")
+                self.bulbTV = bulbAux
 
-    elif nameSplit[5] == "0e":
-        print ("MAC termina en 0e. Bombilla Win")
-        bulbWin = bulbAux
+                print ("                    TIPO DE BULBTV: ")
+                print ("                    " + str(type.__str__(self.bulbTV)))
+                print
+                print
 
-        print ("                    TIPO DE BULBWIN: ")
-        print ("                    " + str(type.__str__(bulbWin)))
-        print
-        print
+            elif nameSplit[5] == "af":
+                print ("MAC temina en AF. Bombilla WIN")
+                self.bulbWin = bulbAux
 
-    index += 1
+                print ("                    TIPO DE BULBWIN: ")
+                print ("                    " + str(type.__str__(self.bulbWin)))
+                print
+                print
+
+        # old bulb ---> NOT WORKS
+            elif nameSplit[5] == "0e":
+                print ("MAC termina en 0e. Bombilla Win")
+                self.bulbWin = bulbAux
+
+                print ("                    TIPO DE BULBWIN: ")
+                print ("                    " + str(type.__str__(self.bulbWin)))
+                print
+                print
+
+            self.index += 1
 
 
-# Como no tiene memoria, apagamos y guardamos el estado apagado
-if bulbTV is not None:
-    bulbTV.set_power(False)
-    stateBulbTV = False
-    print (" ======= BULB TV =======")
-    if stateBulbTV:
-        print ("STATE: ON")
-    else:
-        print ("STATE: OFF")
-    print ("MAC: " + bulbTV.mac_addr)
-    print ("IP:  " + bulbTV.ip_addr)
-    print
 
-if bulbWin is not None:
-    bulbWin.set_power(False)
-    stateBulbWin = False
-    print (" ======= BULB WIN =======")
-    if stateBulbWin:
-        print ("STATE: ON")
-    else:
-        print ("STATE: OFF")
-    print ("MAC: " + bulbWin.mac_addr)
-    print ("IP:  " + bulbWin.ip_addr)
-    print
+    # Como no tiene memoria, apagamos y guardamos el estado apagado
+        if self.bulbTV is not None:
+            self.bulbTV.set_power(False)
+            self.stateBulbTV = False
+            print (" ======= BULB TV =======")
+            if self.stateBulbTV:
+                print ("STATE: ON")
+            else:
+                print ("STATE: OFF")
+            print ("MAC: " + self.bulbTV.mac_addr)
+            print ("IP:  " + self.bulbTV.ip_addr)
+            print
 
-time.sleep(2)
+        if self.bulbWin is not None:
+            self.bulbWin.set_power(False)
+            self.stateBulbWin = False
+            print (" ======= BULB WIN =======")
+            if self.stateBulbWin:
+                print ("STATE: ON")
+            else:
+                print ("STATE: OFF")
+            print ("MAC: " + self.bulbWin.mac_addr)
+            print ("IP:  " + self.bulbWin.ip_addr)
+            print
+
+        time.sleep(2)
+
+    #############################
+    #          TOPICS           #
+    #############################
+        #
+        #
+        #
+        # Cambiar la llamada a metodos por self.metodo()
+        self.topics = {"acho/lights/on/all": {"command": self.bulb_all_on, "text": "encendiendo luces"},
+                       "acho/lights/off/all": {"command": self.bulb_all_off, "text": "apagando luces"},
+                       "acho/lights/on/tv": {"command": self.bulb_tv_on, "text": "encendiendo luz TV"},
+                       "acho/lights/on/win": {"command": self.bulb_win_on, "text": "encendiendo luz ventana"},
+                       "acho/lights/off/tv": {"command": self.bulb_tv_off, "text": "apagando luz TV"},
+                       "acho/lights/off/win": {"command": self.bulb_win_off, "text": "apagando luz ventana"},
+                       "acho/lights/brightnessdown/tv": {"command": self.less_bright_bulbTV, "text": "bajando brillo en luz TV"},
+                       "acho/lights/brightnessup/tv": {"command": self.more_bright_bulbTV, "text": "subiendo brillo TV"},
+                       "acho/lights/brightnessdown/win": {"command": self.less_bright_bulbWin, "text": "bajando brillo ventana"},
+                       "acho/lights/brightnessup/win": {"command": self.more_bright_bulbWin, "text": "subiendo brillo ventana"},
+                       "acho/lights/brightnessdown/all": {"command": self.less_bright_all, "text": "bajando brillo luces"},
+                       "acho/lights/brightnessup/all": {"command": self.more_bright_all, "text": "subiendo brillo luces"}}
+
+    # #PARA PUBLICAR
+    # self.topics_publicar = {
+    #     "acho/lights/BulbTV/power": {"command": get_state_bulbTV(), "text": ""},
+    #     "acho/lights/BulbWin/power": {"command": get_state_bulbWin(), "text": ""}
+    # }
 
 ##################################################
 #                GET PARAMETERS                  #
 ##################################################
 
+    def get_color(self, light):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                return light.get_color()[0]
+            index += 1
 
-def get_color (light):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            return light.get_color()[0]
-        index += 1
+    def get_intensity(self, light):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                return light.get_color()[1]
+            index += 1
 
+    def get_brightness(self, light):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                return light.get_color()[2]
+            index += 1
 
-def get_intensity(light):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            return light.get_color()[1]
-        index += 1
+    def get_warm(self, light):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                return light.get_color()[3]
+            index += 1
 
+    def get_state_bulbTV(self):
+        if self.bulbTV is not None:
+            return self.stateBulbTV
 
-def get_brightness(light):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            return light.get_color()[2]
-        index += 1
-
-
-def get_warm(light):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            return light.get_color()[3]
-        index += 1
-
-
-def get_state_bulbTV():
-    if bulbTV is not None:
-        return stateBulbTV
-
-
-def get_state_bulbWin():
-    if bulbWin is not None:
-        return stateBulbWin
+    def get_state_bulbWin(self):
+        if self.bulbWin is not None:
+            return self.stateBulbWin
 
 
 ##################################################
 #                SET PARAMETERS                  #
 ##################################################
 
+    def set_color(self, light, new_color):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.set_color()[0] = new_color
+            index += 1
 
-def set_color(light, new_color):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.set_color()[0] = new_color
-        index += 1
+    def set_intensity(self, light, new_intensity):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[1] = new_intensity
+            index += 1
 
+    def set_brightness(self, light, new_bright):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[2] = new_bright
 
-def set_intensity(light, new_intensity):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[1] = new_intensity
-        index += 1
+            index += 1
 
+    def set_warm(self, light, new_warm):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[3] = new_warm
+            index += 1
 
-def set_brightness(light, new_bright):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[2] = new_bright
-        index += 1
+    def set_state_bulbTV(self, new_state):
 
+        self.stateBulbTV = new_state
+        ret = self.client.publish("acho/lights/bulbTV/power", new_state)
 
-def set_warm(light, new_warm):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[3] = new_warm
-        index += 1
+    def set_state_bulbWin(self, new_state):
 
-
-def set_state_bulbTV(new_state):
-    stateBulbTV = new_state
-
-
-def set_state_bulbWin(new_state):
-    stateBulbWin = new_state
+        self.stateBulbWin = new_state
+        ret = self.client.publish("acho/lights/bulbTV/power", new_state)
 
 
 ##################################################
@@ -189,80 +221,79 @@ def set_state_bulbWin(new_state):
 
 #             SUM AND REST QUANTITY
 
-'''
-    Modify the color of the light with the given quantity
-    Gets this value into bulb.get_color()[0]
-RED   ---> 0 or 360  ---> 0 or 65280   
-GREEN --->      120  --->      21760
-BLUE  --->      240  --->      43520  
-'''
+    '''
+        Modify the color of the light with the given quantity
+        Gets this value into bulb.get_color()[0]
+    RED   ---> 0 or 360  ---> 0 or 65280   
+    GREEN --->      120  --->      21760
+    BLUE  --->      240  --->      43520  
+    '''
 
+    def modify_color(self, light, quantity):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[0] = light.get_color()[0] + quantity
+            index += 1
 
-def modify_color(light, quantity):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[0] = light.get_color()[0] + quantity
-        index += 1
+    '''
+        Modify the intensity of the color
+        Gets this value into bulb.get_color()[1] 
+    MIN --->     0
+    MAX ---> 60292  
+    '''
 
+    def modify_intensity(self, light, quantity):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[1] = light.get_color()[1] + quantity
+            index += 1
 
-'''
-    Modify the intensity of the color
-    Gets this value into bulb.get_color()[1] 
-MIN --->     0
-MAX ---> 60292  
-'''
+    '''
+        Modify the brightness of the bulb with the given quantity
+        Gets this parameter into bulb.get_color()[2]
+    MIN --->  1966 --->   1%
+    MAX ---> 65535 ---> 100%
+    '''
 
+    def modify_brightness(self, light, quantity, less):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                colorArray = list(light.get_color())
+                if less is True:
+                    bright = colorArray[2]
+                    total = bright - quantity
+                    colorArray[2] = total
+                    light.set_color(colorArray)
 
-def modify_intensity(light, quantity):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[1] = light.get_color()[1] + quantity
-        index += 1
+                if less is False:
+                    bright = colorArray[2]
+                    total = bright + quantity
+                    colorArray[2] = total
+                    light.set_color(colorArray)
 
+                if light.mac_addr == self.bulbTV.mac_addr:
+                    ret = self.client.publish("acho/lights/bulbTV/brightness", total)
+                else:
+                    ret = self.client.publish("acho/lights/bulbWin/brightness", total)
 
-'''
-    Modify the brightness of the bulb with the given quantity
-    Gets this parameter into bulb.get_color()[2]
-MIN --->  1966 --->   1%
-MAX ---> 65535 ---> 100%
-'''
+            index += 1
 
+    '''
+        Modify from cold light to warm light with the given quantity
+        Gets this value into bulb.get_color()[3]
+    MIN --->    2700 K ---> Warmest Light
+    MAX --->    6500 K ---> Coolest light
+    '''
 
-def modify_brightness(light, quantity, less):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            colorArray = list(light.get_color())
-            if less is True:
-                bright = colorArray[2]
-                total = bright - quantity
-                colorArray[2] = total
-                light.set_color(colorArray)
-
-            if less is False:
-                bright = colorArray[2]
-                total = bright + quantity
-                colorArray[2] = total
-                light.set_color(colorArray)
-        index += 1
-        
-        
-'''
-    Modify from cold light to warm light with the given quantity
-    Gets this value into bulb.get_color()[3]
-MIN --->    2700 K ---> Warmest Light
-MAX --->    6500 K ---> Coolest light
-'''
-
-
-def modify_warm(light, quantity):
-    index = 0
-    while index < num_lights:
-        if light.mac_addr == devices[index].mac_addr:
-            light.get_color()[3] = light.get_color()[3] + quantity
-        index += 1
+    def modify_warm(self, light, quantity):
+        index = 0
+        while index < self.num_lights:
+            if light.mac_addr == self.devices[index].mac_addr:
+                light.get_color()[3] = light.get_color()[3] + quantity
+            index += 1
 
 
 ##################################################
@@ -277,249 +308,161 @@ def modify_warm(light, quantity):
 
 # Enciende la bombilla de la TV
 
+    def bulb_tv_on(self):
+        if self.bulbTV is not None:
+            print ("Encendiendo luz cerca TV")
+            self.bulbTV.set_power(True)
+            self.stateBulbTV = True
 
-def bulb_tv_on():
-    if bulbTV is not None:
-        print ("Encendiendo luz cerca TV")
-        bulbTV.set_power(True)
-        stateBulbTV = True
-
-        if stateBulbTV:
-            print ("Encendida")
-            print
+            if self.stateBulbTV:
+                ret = self.client.publish("acho/lights/BulbTV/power", True)
+                print ("Encendida")
+                print
 
 
 # Enciende la bombilla de la ventana
 
+    def bulb_win_on(self):
+        if self.bulbWin is not None:
+            print ("Encendiendo luz cerca ventana")
+            self.bulbWin.set_power(True)
+            self.stateBulbWin = True
 
-def bulb_win_on():
-    if bulbWin is not None:
-        print ("Encendiendo luz cerca ventana")
-        bulbWin.set_power(True)
-        stateBulbWin = True
+            if self.stateBulbWin:
+                ret = self.client.publish("acho/lights/BulbWin/power", True)
+                print ("Encendida")
+                print
 
-        if stateBulbWin:
-            print ("Encendida")
+
+    # Enciende todas las bombillas
+
+    def bulb_all_on(self):
+        print ("Encendiendo todas las luces")
+        if self.bulbTV is not None:
+            self.bulb_tv_on()
+        if self.bulbWin is not None:
+            self.bulb_win_on()
+
+
+    ##################################################
+    #                   TURN OFF                     #
+    ##################################################
+
+    # Apaga la bombilla de la TV
+
+    def bulb_tv_off(self):
+        print ("Apagando luz cerca TV")
+        self.bulbTV.set_power(False)
+        self.stateBulbTV = False
+
+        if not self.stateBulbTV:
+            ret = self.client.publish("acho/lights/BulbTV/power", False)
+            print ("Apagada")
             print
 
 
-# Enciende todas las bombillas
+    # Apaga la bombilla de la ventana
+
+    def bulb_win_off(self):
+        print ("Apagando luz cerca ventana")
+        self.bulbWin.set_power(False)
+        self.stateBulbWin = False
+
+        if not self.stateBulbTV:
+            ret = self.client.publish("acho/lights/BulbTV/power", False)
+            print ("Apagada")
+            print
 
 
-def bulb_all_on():
-    print ("Encendiendo todas las luces")
-    if bulbTV is not None:
-        bulb_tv_on()
-    if bulbWin is not None:
-        bulb_win_on()
+    # Apaga todas las luces
+
+    def bulb_all_off(self):
+        print ("Apagando todas las luces")
+        self.bulb_tv_off()
+        self.bulb_win_off()
 
 
-##################################################
-#                   TURN OFF                     #
-##################################################
+    # 20% LESS -- QUANTITY = -12400
 
-# Apaga la bombilla de la TV
+    def less_bright_bulbTV(self):
+        if self.bulbTV is not None:
+            brillo = int(self.bulbTV.get_color()[2])
+            total = brillo - 12400
+            if total > 0:
+                less = True
+                self.modify_brightness(self.bulbTV, 12400, less)
+            else:
+                print ("Ha llegado al brillo minimo")
 
+    # 20% MORE -- QUANTITY = +12400
 
-def bulb_tv_off():
-    print ("Apagando luz cerca TV")
-    bulbTV.set_power("off")
-    stateBulbTV = False
-
-
-# Apaga la bombilla de la ventana
-
-
-def bulb_win_off():
-    print ("Apagando luz cerca ventana")
-    bulbWin.set_power("off")
-    stateBulbWin = False
-
-
-# Apaga todas las luces
-
-
-def bulb_all_off():
-    print ("Apagando todas las luces")
-    bulb_tv_off()
-    bulb_win_off()
+    def more_bright_bulbTV(self):
+        if self.bulbTV is not None:
+            brillo = int(self.bulbTV.get_color()[2])
+            total = brillo + 12400
+            if total < 65535:
+                less = False
+                self.modify_brightness(self.bulbTV, 12400, less)
+            else:
+                print("Ha llegado al brillo maximo")
 
 
-# 20% LESS -- QUANTITY = -12400
+    # 20% LESS -- QUANTITY = -12400
 
+    def less_bright_bulbWin(self):
+        if self.bulbWin is not None:
+            brillo = int(self.bulbWin.get_color()[2])
+            total = brillo - 12400
+            if total > 0:
+                less = True
+                self.modify_brightness(self.bulbWin, 12400, less)
+            else:
+                print ("Ha llegado al brillo minimo")
 
-def less_bright_bulbTV():
-    if bulbTV is not None:
-        brillo = int(bulbTV.get_color()[2])
-        total = brillo - 12400
-        if total > 0:
-            less = True
-            modify_brightness(bulbTV, 12400, less)
-        else:
-            print ("Ha llegado al brillo minimo")
+    # 20% MORE -- QUANTITY = +12400
 
-# 20% MORE -- QUANTITY = +12400
+    def more_bright_bulbWin(self):
+        if self.bulbWin is not None:
+            brillo = int(self.bulbWin.get_color()[2])
+            total = brillo + 12400
+            if total < 65535:
+                less = False
+                self.modify_brightness(self.bulbWin, 12400, less)
+            else:
+                print ("Ha llegado al brillo maximo")
 
+    def less_bright_all(self):
+        self.less_bright_bulbTV()
+        self.less_bright_bulbWin()
 
-def more_bright_bulbTV():
-    if bulbTV is not None:
-        brillo = int(bulbTV.get_color()[2])
-        total = brillo + 12400
-        if total < 65535:
-            less = False
-            modify_brightness(bulbTV, 12400, less)
-        else:
-            print("Ha llegado al brillo maximo")
-
-
-# 20% LESS -- QUANTITY = -12400
-
-
-def less_bright_bulbWin():
-    if bulbWin is not None:
-        brillo = int(bulbWin.get_color()[2])
-        total = brillo - 12400
-        if total > 0:
-            less = True
-            modify_brightness(bulbWin, 12400, less)
-        else:
-            print ("Ha llegado al brillo minimo")
-
-# 20% MORE -- QUANTITY = +12400
-
-
-def more_bright_bulbWin():
-    if bulbWin is not None:
-        brillo = int(bulbWin.get_color()[2])
-        total = brillo + 12400
-        if total < 65535:
-            less = False
-            modify_brightness(bulbWin, 12400, less)
-        else:
-            print ("Ha llegado al brillo maximo")
-
-
-def less_bright_all():
-    less_bright_bulbTV()
-    less_bright_bulbWin()
-
-
-def more_bright_all():
-    more_bright_bulbTV()
-    more_bright_bulbWin()
-
+    def more_bright_all(self):
+        self.more_bright_bulbTV()
+        self.more_bright_bulbWin()
 
 #############################
-#        MAIN METHOD        #
+#            MQTT           #
 #############################
-
-# --------------------------- PROBANDO CODIGO -------------------------
-
-
-bulb_all_on()
-# bulb_tv_on()
-
-while True:
-
-    if bulbTV is not None:
-        print ("        --- TV ---")
-        less_bright_bulbTV()
-
-    if bulbWin is not None:
-        print ("        --- WIN ---")
-        less_bright_bulbWin()
-
-    time.sleep(2)
-
-# ---------------------------------------------------------------------
-
-#############################
-#          TOPICS           #
-#############################
+    def on__message(self, client, userdata, msg):
+        print ("topic", msg.topic)
+        if msg.topic in self.topics:
+            t = self.topics[msg.topic]
+            client.publish("acho/tts", t["text"])
+            print t
+            t["command"]()
 
 
-topics = {"acho/lights/on/all":  {"command": bulb_all_on, "text": "encendiendo luces"},
-          "acho/lights/off/all": {"command": bulb_all_off, "text": "apagando luces"},
-          "acho/lights/on/tv": 	 {"command": bulb_tv_on, "text": "encendiendo luz TV"},
-          "acho/lights/on/win":      {"command": bulb_win_on, "text": "encendiendo luz ventana"},
-          "acho/lights/off/tv": 	 {"command": bulb_tv_off, "text": "apagando luz TV"},
-          "acho/lights/off/win": 	 {"command": bulb_win_off, "text": "apagando luz ventana"},
-          "acho/lights/brightnessdown/tv": 	 {"command": less_bright_bulbTV(), "text": "bajando brillo en luz TV"},
-          "acho/lights/brightnessup/tv": 	 {"command": more_bright_bulbTV(), "text": "subiendo brillo TV"},
-          "acho/lights/brightnessdown/win":  {"command": less_bright_bulbWin(), "text": "bajando brillo ventana"},
-          "acho/lights/brightnessup/win":  {"command": more_bright_bulbWin(), "text": "subiendo brillo ventana"},
-          "acho/lights/brightnessdown/all":  {"command": less_bright_all(), "text": "bajando brillo luces"},
-          "acho/lights/brightnessup/all":  {"command": more_bright_all(), "text": "subiendo brillo luces"}
-}
 
 
-##########################################
-##########################################
-
-
-def on__connect(client, userdata, flags, rc):
-    print("Connected with result code " + str(rc))
-    client.subscribe("acho/lights/#")
-
-
-def on__message(client, userdata, msg):
-    print ("topic", msg.topic)
-    if msg.topic in topics:
-        t = topics[msg.topic]
-        client.publish("acho/tts", t["text"])
-        t["command"]()
-
-    #elif (msg.topic == "acho/bombillas/unpocobrillo1"):
-        #client.publish("acho/tts", "encendiendo bombilla 1")
-        #control_percentual_vble_B(bombilla1)
-    #elif (msg.topic == "acho/bombillas/unpocobrillo2"):
-        #client.publish("acho/tts", "encendiendo bombilla 2")
-        #control_percentual_vble_B(bombilla2)
-    #elif (msg.topic == "acho/bombillas/unpocobrillo"):
-        #client.publish("acho/tts", "encendiendo bombillas")
-        #control_percentual_vble_B(bombilla1)
-        #control_percentual_vble_B(bombilla2)
-    #elif (msg.topic == "acho/bombillas/brillo1"):
-        #client.publish("acho/tts", "encendiendo bombilla 1")
-        #control_percentual_total_B(bombilla1)
-    #elif (msg.topic == "acho/bombillas/brillo2"):
-        #client.publish("acho/tts", "encendiendo bombilla 2")
-        #control_percentual_total_B(bombilla2)
-    #elif (msg.topic == "acho/bombillas/brillo"):
-        #client.publish("acho/tts", "encendiendo bombillas")
-        #control_percentual_total_B(bombilla1)
-        #control_percentual_total_B(bombilla2)
-    #elif (msg.topic == "acho/bombillas/unpococolor1"):
-        #client.publish("acho/tts", "encendiendo bombilla 1")
-        #control_percentual_vble_K(bombilla1)
-    #elif (msg.topic == "acho/bombillas/unpococolor2"):
-        #discover()
-        #client.publish("acho/tts", "encendiendo bombilla 2")
-        #control_percentual_vble_K(bombilla2)
-    #elif (msg.topic == "acho/bombillas/unpococolor"):
-        #client.publish("acho/bombillas", "encendiendo bombillas")
-        #control_percentual_vble_K(bombilla1)
-        #control_percentual_vble_K(bombilla2)
-    #elif (msg.topic == "acho/bombillas/color1"):
-        #client.publish("acho/tts", "encendiendo bombilla 1")
-        #control_percentual_total_K(bombilla1)
-    #elif (msg.topic == "acho/bombillas/color2"):
-        #client.publish("acho/tts", "encendiendo bombilla 2")
-        #control_percentual_total_K(bombilla2)
-    #elif (msg.topic == "acho/bombillas/color"):
-        #client.publish("acho/tts", "encendiendo bombillas")
-        #control_percentual_total_K(bombilla1)
-        #control_percentual_total_K(bombilla2)
 #
 #
 # # def discover():
-# #     global num_lights
+# #     global self.num_lights
 # #     global lifx
 # #     global config
-# #     global devices
+# #     global self.devices
 # #
-# #     print("\n {} luces encontradas \n".format(len(devices)))
-# #     for d in devices:
+# #     print("\n {} luces encontradas \n".format(len(self.devices)))
+# #     for d in self.devices:
 # #         print(d)
 # #         # i += 1
 # #         # aux_mac = config.get('bombilla_{}'.format(i), 'mac')
@@ -536,13 +479,13 @@ def on__message(client, userdata, msg):
 #
 # # FROM 0 to 65535
 # def modify_B(light, quantity):
-#     global num_lights
+#     global self.num_lights
 #     global lifx
 #     global config
-#     global devices
-#     lifx = LifxLAN(num_lights)
-#     devices = lifx.get_lights()
-#     for d in devices:
+#     global self.devices
+#     lifx = LifxLAN(self.num_lights)
+#     self.devices = lifx.get_lights()
+#     for d in self.devices:
 #         if d.get_mac_addr() == light:
 #             bombilla = d
 #             break
@@ -561,13 +504,13 @@ def on__message(client, userdata, msg):
 #
 # # FROM 2500 to 9000
 # def modify_K(light, quantity):
-#     global num_lights
+#     global self.num_lights
 #     global lifx
 #     global config
-#     global devices
-#     lifx = LifxLAN(num_lights)
-#     devices = lifx.get_lights()
-#     for d in devices:
+#     global self.devices
+#     lifx = LifxLAN(self.num_lights)
+#     self.devices = lifx.get_lights()
+#     for d in self.devices:
 #         if d.get_mac_addr() == light:
 #             bombilla = d
 #             break
@@ -601,13 +544,13 @@ def on__message(client, userdata, msg):
 #
 #
 # def control_percentual_total_K(light):
-#     global num_lights
+#     global self.num_lights
 #     global lifx
 #     global config
-#     global devices
-#     lifx = LifxLAN(num_lights)
-#     devices = lifx.get_lights()
-#     for d in devices:
+#     global self.devices
+#     lifx = LifxLAN(self.num_lights)
+#     self.devices = lifx.get_lights()
+#     for d in self.devices:
 #         if d.get_mac_addr() == light:
 #             bombilla = d
 #             break
@@ -625,13 +568,13 @@ def on__message(client, userdata, msg):
 #
 #
 # def control_percentual_vble_B(light):
-#     global num_lights
+#     global self.num_lights
 #     global lifx
 #     global config
-#     global devices
-#     lifx = LifxLAN(num_lights)
-#     devices = lifx.get_lights()
-#     for d in devices:
+#     global self.devices
+#     lifx = LifxLAN(self.num_lights)
+#     self.devices = lifx.get_lights()
+#     for d in self.devices:
 #         if d.get_mac_addr() == light:
 #             bombilla = d
 #             break
@@ -650,13 +593,13 @@ def on__message(client, userdata, msg):
 #
 #
 # def control_percentual_total_B(light):
-#     global num_lights
+#     global self.num_lights
 #     global lifx
 #     global config
-#     global devices
-#     lifx = LifxLAN(num_lights)
-#     devices = lifx.get_lights()
-#     for d in devices:
+#     global self.devices
+#     lifx = LifxLAN(self.num_lights)
+#     self.devices = lifx.get_lights()
+#     for d in self.devices:
 #         if d.get_mac_addr() == light:
 #             bombilla = d
 #
@@ -675,9 +618,4 @@ def on__message(client, userdata, msg):
 #
 
 
-# client = mqtt.Client()
-# client.on_connect = on__connect
-# client.on_message = on__message
-# client.connect("localhost", 1883, 60)
-# # print ("Connected to Mosquitto broker")
-# client.loop_forever()
+
